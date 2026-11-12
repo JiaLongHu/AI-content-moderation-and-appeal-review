@@ -15,3 +15,6 @@ frontend/dist/
 .DS_Store
 Thumbs.db
 
+
+.venv-local/
+backend/pytest-cache-files-*/
