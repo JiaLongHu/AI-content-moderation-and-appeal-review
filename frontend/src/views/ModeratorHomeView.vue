@@ -4,7 +4,7 @@ import axios from 'axios'
 import { onMounted, ref } from 'vue'
 import { useRouter } from 'vue-router'
 
-import { decideModerationTask, getModerationTask, listModerationTasks } from '../api/moderation'
+import { decideModerationTask, getModerationTask, listModerationTasks, listModerationHistory } from '../api/moderation'
 import { useAuthStore } from '../stores/auth'
 import type { RiskLevel } from '../types/content'
 import type { RiskCategory, ReviewTaskItem } from '../types/review'
@@ -19,6 +19,7 @@ const levels: RiskLevel[] = ['L0', 'L1', 'L2', 'L3', 'L4']
 const auth = useAuthStore()
 const router = useRouter()
 const tasks = ref<ReviewTaskItem[]>([])
+const historyMode = ref(false)
 const selected = ref<ReviewTaskItem | null>(null)
 const finalCategory = ref<RiskCategory>('normal')
 const finalLevel = ref<RiskLevel>('L2')
@@ -33,7 +34,25 @@ function errorText(error: unknown): string {
 
 async function loadTasks(): Promise<void> {
   loading.value = true
-  try { tasks.value = await listModerationTasks() } catch (error) { message.value = errorText(error) } finally { loading.value = false }
+  try { tasks.value = historyMode.value ? await listModerationHistory() : await listModerationTasks() } catch (error) { message.value = errorText(error) } finally { loading.value = false }
+}
+
+async function switchMode(history: boolean): Promise<void> {
+  historyMode.value = history
+  selected.value = null
+  message.value = ''
+  await loadTasks()
+}
+
+async function nextTask(): Promise<void> {
+  if (loading.value) return
+  const currentId = selected.value?.id
+  await loadTasks()
+  const index = tasks.value.findIndex((task) => task.id === currentId)
+  const next = tasks.value.slice(index + 1).find((task) => task.id !== currentId)
+    ?? tasks.value.find((task) => task.id !== currentId)
+  if (next) await openTask(next.id)
+  else message.value = '没有其他待审核任务了。'
 }
 
 async function openTask(id: number): Promise<void> {
@@ -56,6 +75,14 @@ async function decide(decision: 'publish' | 'reject'): Promise<void> {
     message.value = decision === 'publish' ? '审核完成，内容已发布。' : '审核完成，内容已拒绝。'
     selected.value = null
     await loadTasks()
+    const next = tasks.value[0]
+    if (next) {
+      const completedMessage = message.value
+      await openTask(next.id)
+      message.value = completedMessage + ' 已自动打开下一条。'
+    } else {
+      message.value += ' 当前待审核队列已处理完毕。'
+    }
   } catch (error) { message.value = errorText(error) } finally { loading.value = false }
 }
 
@@ -66,21 +93,22 @@ onMounted(loadTasks)
 <template>
   <main class="shell reviewer-shell">
     <section class="page-card reviewer-card">
-      <header class="page-header"><div><p class="muted">{{ auth.user?.username }} · 内容审核员</p><h1>L2待审核任务</h1></div><el-button @click="logout">退出登录</el-button></header>
+      <header class="page-header"><div><p class="muted">{{ auth.user?.username }} · 内容审核员</p><h1>{{ historyMode ? '历史审核记录' : 'L2待审核任务' }}</h1></div><el-button @click="logout">退出登录</el-button></header>
+      <nav class="review-tabs"><el-button :type="!historyMode ? 'primary' : 'default'" :disabled="loading" @click="switchMode(false)">待审核</el-button><el-button :type="historyMode ? 'primary' : 'default'" :disabled="loading" @click="switchMode(true)">历史审核记录</el-button></nav>
       <p v-if="message" class="review-message">{{ message }}</p>
       <p v-if="loading" class="muted">正在处理…</p>
       <div v-if="!selected" class="task-list">
         <button v-for="task in tasks" :key="task.id" class="task-row" @click="openTask(task.id)">
-          <span><strong>#{{ task.id }} {{ task.title || task.body.slice(0, 36) }}</strong><small>{{ task.author }} · {{ task.content_type }}</small></span><span>查看审核 →</span>
+          <span><strong>#{{ task.id }} {{ task.title || task.body.slice(0, 36) }}</strong><small>{{ task.author }} · {{ task.content_type }}</small></span><span>{{ task.decision === 'publish' ? '通过并发布' : task.decision === 'reject' ? '拒绝发布' : '查看审核 →' }}<small v-if="task.completed_at">{{ task.reviewer }} · {{ new Date(task.completed_at).toLocaleString() }}</small></span>
         </button>
-        <el-empty v-if="!loading && tasks.length === 0" description="暂无L2待审核任务" />
+        <el-empty v-if="!loading && tasks.length === 0" :description="historyMode ? '暂无历史审核记录' : '暂无L2待审核任务'" />
       </div>
       <section v-else class="review-detail">
-        <button class="back-button" @click="selected = null">← 返回任务列表</button>
+        <button class="back-button" @click="selected = null">← 返回任务列表</button><el-button v-if="!historyMode" :disabled="loading" @click="nextTask">下一条（不提交当前决定） →</el-button>
         <div class="review-block"><h2>{{ selected.title || '评论/回复内容' }}</h2><p>{{ selected.body }}</p><small>作者：{{ selected.author }}</small></div>
         <div v-if="selected.context" class="review-block context"><h3>最小必要上下文</h3><p>{{ selected.context }}</p></div>
-        <div class="review-block"><h3>AI审核建议</h3><p>类别：{{ selected.moderation.final_category }} · 等级：{{ selected.moderation.final_level }}</p><p>{{ selected.moderation.reason }}</p><ul><li v-for="(confidence, category) in selected.moderation.confidences" :key="category">{{ category }}：{{ Math.round(confidence * 100) }}%</li></ul></div>
-        <div class="decision-panel"><label>最终类别<select v-model="finalCategory"><option v-for="item in categories" :key="item.value" :value="item.value">{{ item.label }}</option></select></label><label>最终等级<select v-model="finalLevel"><option v-for="level in levels" :key="level" :value="level">{{ riskLevelLabels[level] }}</option></select></label><p class="level-hint" role="status">{{ riskLevelHints[finalLevel] }}</p><p v-if="finalLevel === 'L2'" class="warning">L2不能作为人工审核终态，请调整等级。</p><div class="decision-actions"><el-button type="primary" :disabled="loading || !['L0','L1'].includes(finalLevel)" @click="decide('publish')">通过并发布</el-button><el-button type="danger" :disabled="loading || !['L3','L4'].includes(finalLevel)" @click="decide('reject')">拒绝发布</el-button></div></div>
+        <div class="review-block"><h3>当前审核结果</h3><p v-if="historyMode" class="muted">历史决定：{{ selected.decision === 'publish' ? '通过并发布' : '拒绝发布' }} · 审核员：{{ selected.reviewer }}。下方等级为当前结果，可能已被申诉复核更新。</p><p>类别：{{ selected.moderation.final_category }} · 等级：{{ selected.moderation.final_level }}</p><p>{{ selected.moderation.reason }}</p><ul><li v-for="(confidence, category) in selected.moderation.confidences" :key="category">{{ category }}：{{ Math.round(confidence * 100) }}%</li></ul></div>
+        <div v-if="!historyMode && selected.task_status === 'pending'" class="decision-panel"><label>最终类别<select v-model="finalCategory"><option v-for="item in categories" :key="item.value" :value="item.value">{{ item.label }}</option></select></label><label>最终等级<select v-model="finalLevel"><option v-for="level in levels" :key="level" :value="level">{{ riskLevelLabels[level] }}</option></select></label><p class="level-hint" role="status">{{ riskLevelHints[finalLevel] }}</p><p v-if="finalLevel === 'L2'" class="warning">L2不能作为人工审核终态，请调整等级。</p><div class="decision-actions"><el-button type="primary" :disabled="loading || !['L0','L1'].includes(finalLevel)" @click="decide('publish')">通过并发布</el-button><el-button type="danger" :disabled="loading || !['L3','L4'].includes(finalLevel)" @click="decide('reject')">拒绝发布</el-button></div></div>
       </section>
     </section>
   </main>
@@ -89,5 +117,7 @@ onMounted(loadTasks)
 <style scoped>
 .reviewer-shell{align-items:flex-start}.reviewer-card{max-width:980px}.task-list,.review-detail{display:grid;gap:12px;margin-top:20px}.task-row{display:flex;justify-content:space-between;align-items:center;text-align:left;border:1px solid #e2e8f0;background:#fff;border-radius:12px;padding:16px;cursor:pointer;color:#344054}.task-row:hover{border-color:#8aaff7}.task-row small{display:block;color:#7d899c;margin-top:5px}.review-block,.decision-panel{border:1px solid #e3e9f2;border-radius:12px;padding:17px}.review-block h2,.review-block h3{margin-top:0}.review-block p{white-space:pre-wrap;line-height:1.65}.context{background:#f7f9fc}.decision-panel{display:grid;gap:14px}.decision-panel label{display:grid;gap:7px;font-weight:600}.decision-panel select{padding:10px;border:1px solid #cbd5e1;border-radius:9px;background:#fff}.decision-actions{display:flex;gap:10px}.back-button{justify-self:start;border:0;background:transparent;color:#155eef;cursor:pointer}.warning{color:#b54708}.review-message{padding:10px 13px;background:#eff6ff;color:#175cd3;border-radius:9px}
 </style>
+
+
 
 

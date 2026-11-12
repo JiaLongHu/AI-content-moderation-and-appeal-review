@@ -11,6 +11,10 @@ export type RiskCategory =
   | 'spam_advertising'
 
 export interface ReviewTaskItem {
+  task_status: 'pending' | 'completed'
+  decision: 'publish' | 'reject' | null
+  reviewer: string | null
+  completed_at: string | null
   id: number
   content_id: number
   content_type: ContentType

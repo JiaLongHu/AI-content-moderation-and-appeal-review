@@ -14,6 +14,10 @@ class ReviewTaskItem(BaseModel):
     title: str | None
     body: str
     content_status: ContentStatus
+    task_status: str
+    decision: Decision | None
+    reviewer: str | None
+    completed_at: datetime | None
     created_at: datetime
     context: str | None = None
     moderation: ModerationSummary

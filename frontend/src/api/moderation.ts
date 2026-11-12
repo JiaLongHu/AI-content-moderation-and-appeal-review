@@ -15,3 +15,7 @@ export async function decideModerationTask(
 ): Promise<ReviewTaskItem> {
   return (await api.post<ReviewTaskItem>(`/moderation/tasks/${taskId}/decision`, payload)).data
 }
+
+export async function listModerationHistory(): Promise<ReviewTaskItem[]> {
+  return (await api.get<ReviewTaskItem[]>('/moderation/tasks/history')).data
+}

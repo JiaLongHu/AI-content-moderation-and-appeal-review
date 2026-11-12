@@ -43,6 +43,10 @@ def task_item(db: Session, task: ReviewTask, include_context: bool) -> ReviewTas
         title=content.title,
         body=content.body,
         content_status=content.status,
+        task_status=task.status.value,
+        decision=task.decision,
+        reviewer=(db.get(User, task.reviewer_id).username if task.reviewer_id else None),
+        completed_at=task.completed_at,
         created_at=task.created_at,
         context=build_minimum_context(db, content) if include_context else None,
         moderation=ModerationSummary(
@@ -65,6 +69,20 @@ def list_tasks(
         select(ReviewTask)
         .where(ReviewTask.status == ReviewTaskStatus.PENDING)
         .order_by(ReviewTask.created_at.asc(), ReviewTask.id.asc())
+    )
+    return [task_item(db, task, include_context=False) for task in tasks]
+
+
+@router.get("/history", response_model=list[ReviewTaskItem])
+def task_history(
+    db: Annotated[Session, Depends(get_db)],
+    reviewer: Annotated[User, Depends(require_content_reviewer)],
+) -> list[ReviewTaskItem]:
+    del reviewer
+    tasks = db.scalars(
+        select(ReviewTask)
+        .where(ReviewTask.status == ReviewTaskStatus.COMPLETED)
+        .order_by(ReviewTask.completed_at.desc(), ReviewTask.id.desc())
     )
     return [task_item(db, task, include_context=False) for task in tasks]
 

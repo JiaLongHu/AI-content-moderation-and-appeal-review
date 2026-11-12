@@ -119,3 +119,32 @@ def test_comment_task_contains_only_minimum_context(client: TestClient) -> None:
     assert "上下文主题" in detail["context"]
     assert "上下文正文" in detail["context"]
     assert "完整评论区" not in detail["context"]
+
+
+def test_history_only_contains_completed_tasks_and_requires_reviewer(client: TestClient) -> None:
+    create_pending_post(client)
+    headers = auth_headers(client, "content_reviewer")
+    assert client.get("/api/v1/moderation/tasks/history", headers=headers).json() == []
+    task_id = client.get("/api/v1/moderation/tasks", headers=headers).json()[0]["id"]
+    response = client.post(
+        f"/api/v1/moderation/tasks/{task_id}/decision",
+        json={"final_category": "harassment", "final_level": "L3", "decision": "reject"},
+        headers=headers,
+    )
+    assert response.status_code == 200
+    create_pending_post(client)
+    history = client.get("/api/v1/moderation/tasks/history", headers=headers)
+    assert history.status_code == 200
+    assert len(history.json()) == 1
+    item = history.json()[0]
+    assert item["id"] == task_id
+    assert item["task_status"] == "completed"
+    assert item["decision"] == "reject"
+    assert item["reviewer"] == "content_reviewer"
+    assert item["completed_at"] is not None
+    assert len(client.get("/api/v1/moderation/tasks", headers=headers).json()) == 1
+    for username in ("user_a", "appeal_reviewer"):
+        assert client.get(
+            "/api/v1/moderation/tasks/history", headers=auth_headers(client, username)
+        ).status_code == 403
+    assert client.get("/api/v1/moderation/tasks/history").status_code == 401
