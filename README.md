@@ -73,6 +73,28 @@
 - npm 10或更高版本；
 - Windows PowerShell示例命令均从项目根目录执行。
 
+## 当前本地运行方式（2026-11-12）
+
+当前版本已接入 DeepSeek，版本提交为 `3e90a60`（接入deepseek审核v1）。接口仍保持兼容聊天补全协议，其他厂商可以通过环境变量替换。
+
+本机已建立 `.venv-local`，使用 Python 3.12.14 和 Node.js 24.22.1。原 `.venv` 来自其他机器，不应继续使用。以下通用安装章节适用于新环境；本机直接执行：
+
+```powershell
+.\start-local.ps1
+```
+
+脚本依赖本机 Codex 缓存中的 Node.js 24 和项目内 `.venv-local`，在后台启动服务；已监听的端口会被跳过。它不执行重启，也不会安装依赖。修改 `.env` 后需重启后端。日志位于根目录的 `backend-server.log`、`backend-error.log`、`frontend-server.log` 和 `frontend-error.log`。
+
+本机后端验证命令：
+
+```powershell
+.\.venv-local\Scripts\python.exe -m pytest backend\tests -q
+```
+
+四个账号的初始密码取自本机 `.env` 的 `SEED_DEFAULT_PASSWORD`，不在版本库中记录。已有数据库密码不会因修改该变量自动更新。不要用示例文件覆盖已经配置好的 `.env`。
+
+本轮验证：后端72项测试通过，前端类型检查、生产构建及1项测试通过；健康检查、登录、发帖接口均正常。真实 DeepSeek 将日常散步帖子判为 normal/L0、置信度0.99，系统自动发布。此结果是一次接入验证，不代表模型对所有内容的准确率。
+
 ## 安装
 
 ### 1. 后端依赖
@@ -88,7 +110,7 @@ python -m pip install -r backend\requirements-dev.txt
 ### 2. 前端依赖
 
 ```powershell
-npm --prefix frontend install
+npm --prefix frontend ci
 ```
 
 ## 配置
@@ -106,9 +128,9 @@ JWT_SECRET_KEY=请替换为足够长的随机字符串
 SEED_DEFAULT_PASSWORD=请设置四个演示账号的共同初始密码
 DATABASE_URL=sqlite:///./backend/data/app.db
 FRONTEND_ORIGIN=http://localhost:5173
-AI_API_BASE_URL=https://你的服务地址/v1
+AI_API_BASE_URL=https://api.deepseek.com
 AI_API_KEY=你的服务密钥
-AI_MODEL=你的模型名称
+AI_MODEL=deepseek-chat
 AI_TIMEOUT_SECONDS=10
 ```
 
@@ -214,6 +236,7 @@ npm --prefix frontend audit
 - 没有异步任务队列，AI调用期间请求会等待；
 - 没有分页、搜索、通知、监控和生产级部署配置；
 - 模型自报置信度只用于原型分流，不代表统计校准概率；
-- 项目当前目录尚未初始化Git仓库。
+- 2026-11-12 安装时 npm 审计报告15项漏洞（13项中危、2项高危），尚未升级处理。
 
 完整产品范围、规则和验收标准请参阅[需求分析.md](需求分析.md)、[dev-workflow.md](dev-workflow.md)和[task.md](task.md)。
+

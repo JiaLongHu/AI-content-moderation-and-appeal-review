@@ -116,9 +116,11 @@ onMounted(loadPosts)
 
 <template>
   <main class="shell forum-shell">
+    <section class="community-banner"><div><span class="banner-kicker">WELCOME TO OUR COMMUNITY</span><h2>兴趣相遇，灵感发生。</h2><p>聊聊日常，分享发现。在这里，看见文字的温度。</p><button @click="showSection('create')">＋ 发布我的第一份灵感</button></div><div class="banner-art" aria-hidden="true"><span class="floating-note note-one">今天也有新发现 ✦</span><div class="smile-card">:)</div><span class="floating-note note-two">hello, world!</span><i class="art-orbit" /></div></section>
+    <div class="community-layout">
     <section class="page-card forum-card">
       <header class="page-header">
-        <div><p class="muted">{{ auth.user?.username }} · 普通用户</p><h1>综合兴趣文字社区</h1></div>
+        <div><p class="muted">{{ auth.user?.username }} · 普通用户</p><h1>社区动态<span class="heading-label">发现同频的你</span></h1></div>
         <el-button @click="logout">退出登录</el-button>
       </header>
       <nav class="forum-nav" aria-label="用户功能">
@@ -132,7 +134,7 @@ onMounted(loadPosts)
       <p v-if="loading" class="muted loading-text">正在处理…</p>
 
       <section v-if="section === 'forum' && !detail" class="content-list">
-        <article v-for="post in posts" :key="post.id" class="content-item clickable" @click="openPost(post.id)">
+        <article v-for="post in posts" :key="post.id" class="content-item clickable" tabindex="0" role="button" @keydown.enter="openPost(post.id)" @keydown.space.prevent="openPost(post.id)" @click="openPost(post.id)">
           <div class="item-meta">{{ post.author }} · {{ new Date(post.created_at).toLocaleString() }}</div>
           <h2>{{ post.title }}</h2><p>{{ post.body }}</p>
         </article>
@@ -182,9 +184,15 @@ onMounted(loadPosts)
         <el-empty v-if="!loading && appeals.length === 0" description="你还没有提交申诉" />
       </section>
     </section>
+    <aside class="community-sidebar">
+      <section class="sidebar-profile"><div class="profile-cover" /><div class="profile-avatar">{{ auth.user?.username?.slice(0, 1).toUpperCase() }}</div><h3>{{ auth.user?.username }}</h3><p>每一次分享，都值得被看见</p><button @click="showSection('create')">＋ 写点什么</button><div class="profile-links"><button @click="showSection('mine')">我的内容 →</button><button @click="showSection('appeals')">我的申诉 →</button></div></section>
+      <section class="sidebar-guide"><span class="guide-label">COMMUNITY GUIDE</span><h3>一起守护这份热爱</h3><p><b>01</b> 保持友善，尊重不同声音</p><p><b>02</b> 分享真实，保护个人隐私</p><p><b>03</b> 认真交流，让灵感自由生长</p><div class="guide-bottom">一段文字，一个新的连接 ✧</div></section>
+    </aside>
+    </div>
   </main>
 </template>
 
 <style scoped>
 .forum-shell{align-items:flex-start}.forum-card{max-width:980px}.forum-nav{display:flex;gap:8px;margin:22px 0;padding-bottom:14px;border-bottom:1px solid #e8edf5}.forum-nav button,.text-button{border:0;background:transparent;color:#5c6980;cursor:pointer;font:inherit}.forum-nav button{padding:9px 15px;border-radius:9px}.forum-nav button.active{color:#155eef;background:#edf4ff;font-weight:650}.content-list,.post-detail{display:grid;gap:14px}.content-item,.comment-card,.composer{border:1px solid #e4eaf2;border-radius:14px;padding:18px;background:#fff}.content-item h2{margin:7px 0;font-size:19px}.content-item p,.comment-card p{margin:7px 0 0;white-space:pre-wrap;line-height:1.65}.clickable{cursor:pointer;transition:.15s ease}.clickable:hover{transform:translateY(-1px);border-color:#9fbcf8}.featured{background:#f8faff}.item-meta{color:#7d899c;font-size:13px}.composer{display:grid;gap:12px}.composer h2{margin:0}.composer label{display:grid;gap:7px;font-weight:600}.composer input,.composer textarea,.reply-composer input,.appeal-box textarea{width:100%;box-sizing:border-box;border:1px solid #cad4e2;border-radius:10px;padding:11px 12px;font:inherit;color:#263247}.composer textarea{min-height:180px;resize:vertical}.composer.compact textarea{min-height:92px}.composer-actions,.status-row,.reply-composer{display:flex;align-items:center;justify-content:space-between;gap:12px}.composer-actions span{color:#8995a8;font-size:13px}.section-title{margin:12px 0 0}.reply-card{margin:12px 0 0 20px;padding:11px 14px;border-left:3px solid #c9d9fa;background:#f7f9fc}.reply-composer{margin-top:12px}.text-button{justify-self:start;color:#155eef;padding:2px 0}.notice{padding:10px 13px;border-radius:9px}.notice.error{color:#b42318;background:#fef3f2}.notice.success{color:#067647;background:#ecfdf3}.loading-text{text-align:center}.status-pill{padding:4px 9px;border-radius:999px;background:#eef2f7;font-size:13px}.status-pill[data-status='published']{color:#067647;background:#ecfdf3}.status-pill[data-status='rejected']{color:#b42318;background:#fef3f2}.status-pill[data-status='pending_manual_review']{color:#b54708;background:#fffaeb}.moderation-reason{color:#677489;font-size:14px}.appeal-box{display:grid;gap:10px;margin-top:14px}.appeal-box textarea{min-height:84px;resize:vertical}@media(max-width:680px){.forum-nav{overflow-x:auto}.reply-composer{align-items:stretch;flex-direction:column}}
 </style>
+

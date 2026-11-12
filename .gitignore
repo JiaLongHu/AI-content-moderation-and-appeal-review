@@ -18,3 +18,17 @@ Thumbs.db
 
 .venv-local/
 backend/pytest-cache-files-*/
+# Local credentials, exports and private runtime files
+.env.*
+!.env.example
+!frontend/.env.example
+*.pem
+*.key
+*.p12
+*.pfx
+*.sqlite
+*.sqlite3
+*.db-journal
+*.db-wal
+*.db-shm
+privacy-scan.local.py

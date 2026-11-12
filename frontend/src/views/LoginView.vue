@@ -41,10 +41,10 @@ async function submit(): Promise<void> {
 <template>
   <main class="login-page">
     <section class="login-card">
-      <div class="brand-mark">AI</div>
-      <p class="eyebrow">TEXT SAFETY WORKSPACE</p>
-      <h1>文字内容审核系统</h1>
-      <p class="subtitle">使用预置账号登录，进入对应的社区或审核工作区。</p>
+      <div class="brand-mark">文</div>
+      <p class="eyebrow">WELCOME TO WENTING</p>
+      <h1>相遇，从一句话开始</h1>
+      <p class="subtitle">登录文町，分享你的日常与热爱。</p>
 
       <el-form label-position="top" @submit.prevent="submit">
         <el-form-item label="用户名">
@@ -62,7 +62,7 @@ async function submit(): Promise<void> {
         </el-form-item>
         <el-alert v-if="errorMessage" :closable="false" :title="errorMessage" type="error" />
         <el-button class="login-button" :loading="loading" type="primary" @click="submit">
-          登录
+          登录，开启今天的发现
         </el-button>
       </el-form>
     </section>
@@ -126,4 +126,5 @@ h1 {
   margin-top: 20px;
 }
 </style>
+
 

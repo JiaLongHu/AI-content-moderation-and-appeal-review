@@ -353,3 +353,11 @@ test_ap004_prevents_duplicate_appeal
 test_fbl003_prevents_nested_reply
 ```
 
+
+## 七、当前 DeepSeek 运行说明（2026-11-12）
+
+后端通过 `.env` 配置 `AI_API_BASE_URL=https://api.deepseek.com` 和 `AI_MODEL=deepseek-chat`，`AI_API_KEY` 仅在本机设置。当前超时为10秒，所有原有置信度阈值和异常降级规则保持不变。
+
+排查内容进入 L2 时，先检查配置是否完整、后端是否已重启、接口网络与额度是否正常，再检查响应是否符合 JSON 结构。L2 本身不能证明模型不可用，也可能是等级或置信度触发人工分流。规则命中可能直接返回结果，因此验证真实模型时应使用不命中基础规则的普通文本。
+
+本机启动及日志位置以 README 的“当前本地运行方式”为准。不得将真实密钥、运行数据库或日志提交到 Git。
